@@ -41,4 +41,6 @@ test_llava_instruct.py
 
 Video-LLaMA-2-7B-Finetuned/
 dataset_train**
+**.zip
+
 

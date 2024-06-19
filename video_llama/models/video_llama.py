@@ -131,6 +131,7 @@ class VideoLLAMA(Blip2Base):
         self.AUDIO_PATCH_TOKEN_ID = self.llama_tokenizer.get_vocab()[DEFAULT_AUDIO_PATCH_TOKEN]
 
         logging.info('Loading LLAMA Model')
+        self.low_resource = True
         if self.low_resource:
             self.llama_model = LlamaForCausalLM.from_pretrained(
                 llama_model,
@@ -182,6 +183,8 @@ class VideoLLAMA(Blip2Base):
             print('Prompt Example \n{}'.format(random.choice(self.prompt_list)))
         else:
             self.prompt_list = []
+
+        self.prompt_template = prompt_template
 
         self.video_frame_position_embedding = nn.Embedding(max_frame_pos, self.Qformer.config.hidden_size)
 
@@ -347,10 +350,12 @@ class VideoLLAMA(Blip2Base):
             for i in range (batch_size):
                 prompt[i] = self.prompt_template.format('<Img><ImageHere></Img> ' +  prompt[i])
                 p_before, p_after = prompt[i].split('<ImageHere>')
+                # =================== CHANGE BLOCK ========================
                 p_before_tokens = self.llama_tokenizer(
-                    p_before, return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
+                    p_before, return_tensors="pt", padding="max_length", max_length=32, truncation=True, add_special_tokens=False).to(img_embeds.device)
                 p_after_tokens = self.llama_tokenizer(
-                    p_after, return_tensors="pt", add_special_tokens=False).to(img_embeds.device)
+                    p_after, return_tensors="pt", padding="max_length", max_length=200, truncation=True, add_special_tokens=False).to(img_embeds.device)
+                # =================== END CHANGE BLOCK ========================
                 p_before_embeds = self.llama_model.model.embed_tokens(p_before_tokens.input_ids).expand(-1, -1, -1)
                 p_after_embeds = self.llama_model.model.embed_tokens(p_after_tokens.input_ids).expand(-1, -1, -1)
                 if i == 0:

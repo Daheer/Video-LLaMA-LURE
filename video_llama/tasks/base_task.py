@@ -70,7 +70,7 @@ class BaseTask:
         loss = res["loss"]
         sharp_loss = res["sharp_loss"]
         # ======================== END CHANGE BLOCK ========================
-        return loss
+        return loss, sharp_loss
 
     def valid_step(self, model, samples):
         raise NotImplementedError

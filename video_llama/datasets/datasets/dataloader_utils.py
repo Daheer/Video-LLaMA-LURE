@@ -144,7 +144,6 @@ class IterLoader:
 
     def __next__(self):
         try:
-            breakpoint()
             data = next(self.iter_loader)
         except StopIteration:
             self._epoch += 1

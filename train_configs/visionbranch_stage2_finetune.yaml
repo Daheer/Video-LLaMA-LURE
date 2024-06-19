@@ -12,11 +12,11 @@ model:
   # some ckpts could be download from our provided huggingface repo
   # i.e.  https://huggingface.co/DAMO-NLP-SG/Video-LLaMA-2-13B-Finetuned
   
-  llama_model: "/teamspace/studios/this_studio/GenAI/Video-LLaMA/Video-LLaMA-2-7B-Finetuned/llama-2-7b-chat-hf"
-  imagebind_ckpt_path: "/teamspace/studios/this_studio/GenAI/Video-LLaMA/Video-LLaMA-2-7B-Finetuned/imagebind_huge.pth"
+  llama_model: "/home/ubuntu/Video-LLaMA-LURE/Video-LLaMA-2-7B-Finetuned/llama-2-7b-chat-hf"
+  imagebind_ckpt_path: "/home/ubuntu/Video-LLaMA-LURE/Video-LLaMA-2-7B-Finetuned/imagebind_huge.pth"
 
   # The ckpt of vision branch after stage1 pretrained, 
-  ckpt: "/teamspace/studios/this_studio/GenAI/Video-LLaMA/Video-LLaMA-2-7B-Finetuned/VL_LLaMA_2_7B_Finetuned.pth"
+  ckpt: "/home/ubuntu/Video-LLaMA-LURE/Video-LLaMA-2-7B-Finetuned/VL_LLaMA_2_7B_Finetuned.pth"
 
 
   # only train vision branch
@@ -50,7 +50,7 @@ datasets:
   cc_sbu_align:
     data_type: images
     build_info:
-      storage: /teamspace/studios/this_studio/Video-LLaMA/dataset_train
+      storage: /home/ubuntu/Video-LLaMA-LURE/dataset_train/
       vis_processor:
         train:
           name: "blip2_image_train"
