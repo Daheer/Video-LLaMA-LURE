@@ -16,7 +16,8 @@ model:
   imagebind_ckpt_path: "/home/ubuntu/Video-LLaMA-LURE/Video-LLaMA-2-7B-Finetuned/imagebind_huge.pth"
 
   # The ckpt of vision branch after stage1 pretrained, 
-  ckpt: "/home/ubuntu/Video-LLaMA-LURE/Video-LLaMA-2-7B-Finetuned/VL_LLaMA_2_7B_Finetuned.pth"
+  # ckpt: "/home/ubuntu/Video-LLaMA-LURE/Video-LLaMA-2-7B-Finetuned/VL_LLaMA_2_7B_Finetuned.pth"
+  ckpt: "/home/ubuntu/Video-LLaMA-LURE/video_llama/output/videollama_stage2_finetune/20240621173/checkpoint_2.pth"
 
 
   # only train vision branch
@@ -47,10 +48,16 @@ model:
   
 
 datasets:
+  webvid:
+      vis_processor:
+        train:
+          name: "alpro_video_eval"
+          n_frms: 8
+          image_size: 224
   cc_sbu_align:
     data_type: images
     build_info:
-      storage: /home/ubuntu/Video-LLaMA-LURE/dataset_train/
+      storage: /home/ubuntu/Video-LLaMA-LURE/dataset_train_224/
       vis_processor:
         train:
           name: "blip2_image_train"
