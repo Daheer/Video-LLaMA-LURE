@@ -1,0 +1,36 @@
+model:
+  arch: video_llama
+  model_type: pretrain_vicuna
+  freeze_vit: True
+  freeze_qformer: True
+  num_query_token: 32
+  llama_model: "/home/ubuntu/Video-LLaMA-LURE/Video-LLaMA-2-7B-Finetuned/llama-2-7b-chat-hf"
+  imagebind_ckpt_path: "/home/ubuntu/Video-LLaMA-LURE/Video-LLaMA-2-7B-Finetuned/imagebind_huge.pth"
+  ckpt: "/home/ubuntu/Video-LLaMA-LURE/video_llama/output/videollama_stage2_finetune/20240621173/checkpoint_2.pth"
+  equip_audio_branch: False  # whether equips the audio branch
+  frozen_llama_proj: False
+  fusion_head_layers: 2
+  max_frame_pos: 32
+  fusion_header_type: "seqTransf"
+  max_txt_len: 320
+  end_sym: "</s>"
+  prompt_path: "prompts/alignment_image.txt"
+  prompt_template: '[INST] <<SYS>>\n \n<</SYS>>\n\n{} [/INST] '
+datasets:
+  webvid:
+      vis_processor:
+        train:
+          name: "alpro_video_eval"
+          n_frms: 8
+          image_size: 224
+  cc_sbu_align:
+    data_type: images
+    build_info:
+      storage: /home/ubuntu/Video-LLaMA-LURE/dataset_train_224/
+      vis_processor:
+        train:
+          name: "blip2_image_train"
+          image_size: 224
+      text_processor:
+        train:
+          name: "blip_caption"
