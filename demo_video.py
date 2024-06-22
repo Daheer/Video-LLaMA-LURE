@@ -116,16 +116,50 @@ def gradio_ask(user_message, chatbot, chat_state):
 
 
 def gradio_answer(chatbot, chat_state, img_list, num_beams, temperature):
-    llm_message = chat.answer(conv=chat_state,
-                              img_list=img_list,
-                              num_beams=num_beams,
-                              temperature=temperature,
-                              max_new_tokens=300,
-                              max_length=2000)[0]
-    chatbot[-1][1] = llm_message
+    # ========================= CHANGE BLOCK =========================
+    output_text, _, _, u_wordlist, wordlist, p_list, p_all = chat.answer_lure(conv=chat_state,
+                                                                        img_list=img_list,
+                                                                        num_beams=num_beams,
+                                                                        temperature=temperature,
+                                                                        max_new_tokens=300,
+                                                                        max_length=2000)
+    float_list = [tensor.item() for tensor in plist]
+
+    print(f'Original (possible hallucination) output: {output_text}')
+
+    output_text = replace_words_with_idk(output_text, wordlist, p_all, un=0.9)
+
+    print(f'Replacing possible hallucination words with [IDN]: {output_text}')
+
+    rewrite_prompt = 'According to the picture, remove the information that does not exist in the following description: ' + output_text
+
+    conv.append_message(conv.roles[0], "<Image><ImageHere></Image> "+ rewrite_prompt)
+    
+    output_text, _, _, _, _, _, _ = chat.answer_lure(conv=conv,
+                                                img_list=img_list,
+                                                num_beams=num_beams,
+                                                temperature=temperature,
+                                                max_new_tokens=300,
+                                                max_length=2000)
+    chatbot[-1][1] = output_text
     print(chat_state.get_prompt())
     print(chat_state)
     return chatbot, chat_state, img_list
+
+    # ========================= END CHANGE BLOCK =========================
+
+    
+    # llm_message = chat.answer(conv=chat_state,
+    #                           img_list=img_list,
+    #                           num_beams=num_beams,
+    #                           temperature=temperature,
+    #                           max_new_tokens=300,
+    #                           max_length=2000)[0]
+    
+    # chatbot[-1][1] = llm_message
+    # print(chat_state.get_prompt())
+    # print(chat_state)
+    # return chatbot, chat_state, img_list
 
 title = """
 <h1 align="center"><a href="https://github.com/DAMO-NLP-SG/Video-LLaMA"><img src="https://s1.ax1x.com/2023/05/22/p9oQ0FP.jpg", alt="Video-LLaMA" border="0" style="margin: 0 auto; height: 200px;" /></a> </h1>

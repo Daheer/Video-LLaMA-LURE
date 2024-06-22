@@ -18,8 +18,13 @@ import os
 from video_llama.common.registry import registry
 from video_llama.processors.video_processor import ToTHWC,ToUint8,load_video
 from video_llama.processors import Blip2ImageEvalProcessor
+
+import nltk
             
 from video_llama.models.ImageBind.data import load_and_transform_audio_data
+
+from generate_idk import *
+
 class SeparatorStyle(Enum):
     """Different separator style."""
     SINGLE = auto()
@@ -181,6 +186,84 @@ class Chat:
             conv.messages[-1][1] = ' '.join([conv.messages[-1][1], text])
         else:
             conv.append_message(conv.roles[0], text)
+
+    def answer_lure(self, conv, img_list, max_new_tokens=300, num_beams=1, min_length=1, top_p=0.9,
+               repetition_penalty=1.0, length_penalty=1, temperature=1.0, max_length=2000):
+        conv.append_message(conv.roles[1], None)
+        embs = self.get_context_emb(conv, img_list)
+
+        current_max_len = embs.shape[1] + max_new_tokens
+        if current_max_len - max_length > 0:
+            print('Warning: The number of tokens in current conversation exceeds the max length. '
+                  'The model will not see the contexts outside the range.')
+        begin_idx = max(0, current_max_len - max_length)
+
+        embs = embs[:, begin_idx:]
+        if conv.sep =="###":
+            stop_words_ids = [torch.tensor([835]).to(self.device),
+                          torch.tensor([2277, 29937]).to(self.device)]  # '###' can be encoded in two different ways.
+            stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=stop_words_ids)])
+        else:
+            stop_words_ids = [torch.tensor([2]).to(self.device)]
+            stopping_criteria = StoppingCriteriaList([StoppingCriteriaSub(stops=stop_words_ids)])
+
+        # stopping_criteria
+        outputs = self.model.llama_model.generate(
+            inputs_embeds=embs,
+            max_new_tokens=max_new_tokens,
+            stopping_criteria=stopping_criteria,
+            num_beams=num_beams,
+            do_sample=True,
+            min_length=min_length,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty,
+            length_penalty=length_penalty,
+            temperature=temperature,
+        )
+        output_token = outputs[0]
+        if output_token[0] == 0:  # the model might output a unknow token <unk> at the beginning. remove it
+            output_token = output_token[1:]
+        if output_token[0] == 1:  # some users find that there is a start token <s> at the beginning. remove it
+            output_token = output_token[1:]
+        output_text = self.model.llama_tokenizer.decode(output_token, add_special_tokens=False)
+
+        if conv.sep =="###":
+            output_text = output_text.split('###')[0]  # remove the stop sign '###'
+            output_text = output_text.split('Assistant:')[-1].strip()
+        else:
+            output_text = output_text.split(conv.sep2)[0]  # remove the stop sign '###'
+            output_text = output_text.split(conv.roles[1]+':')[-1].strip()
+
+        # ========================= CHANGE BLOCK =========================
+
+        tokens = nltk.word_tokenize(output_text)
+        pos_tags = nltk.pos_tag(tokens)
+        u_wordlist=list()
+        wordlist = list()
+        p_list= list()
+        p_all = {}
+        for word, pos in pos_tags:
+            inputs = self.model.llama_tokenizer(word, return_tensors="pt", add_special_tokens=False).to(self.device).input_ids
+            if word not in p_all.keys():
+                p_all[word] = list()
+            if word not in wordlist and pos.startswith('NN'):
+                wordlist.append(word)                
+            for i in range(inputs.shape[0]):
+                token = inputs[0, i]
+                if torch.where(output_token == token)[0].numel() != 0:
+                        toke_idx = torch.where(output_token == token)[0][0]
+                        p_all[word].append(probs[toke_idx,token].cpu().item())
+                        if -np.log(probs[toke_idx,token].cpu())>0.9:
+                            if word not in u_wordlist and pos.startswith('NN'):
+                                u_wordlist.append(word)
+                                p_list.append(probs[toke_idx,token])
+                                break
+
+        conv.messages[-1][1] = output_text
+        
+        return output_text, output_token.cpu().numpy(), probs, u_wordlist, wordlist, p_list, p_all
+
+        # ========================= END CHANGE BLOCK =========================
 
     def answer(self, conv, img_list, max_new_tokens=300, num_beams=1, min_length=1, top_p=0.9,
                repetition_penalty=1.0, length_penalty=1, temperature=1.0, max_length=2000):
