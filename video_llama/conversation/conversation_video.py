@@ -8,6 +8,7 @@ from PIL import Image
 import sys
 import os
 import torch
+import torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModelForCausalLM, LlamaTokenizer
 from transformers import StoppingCriteria, StoppingCriteriaList
 
@@ -20,6 +21,9 @@ from video_llama.processors.video_processor import ToTHWC,ToUint8,load_video
 from video_llama.processors import Blip2ImageEvalProcessor
 
 import nltk
+
+nltk.download("punkt")
+nltk.download("averaged_perceptron_tagger")
             
 from video_llama.models.ImageBind.data import load_and_transform_audio_data
 
@@ -219,8 +223,13 @@ class Chat:
             repetition_penalty=repetition_penalty,
             length_penalty=length_penalty,
             temperature=temperature,
+            return_dict_in_generate=True,
+            output_scores=True,
         )
-        output_token = outputs[0]
+        scores = outputs.scores
+        probs = [F.softmax(score, dim=-1).squeeze(0) for score in scores]
+        probs = torch.stack(probs)
+        output_token = outputs[0][0]
         if output_token[0] == 0:  # the model might output a unknow token <unk> at the beginning. remove it
             output_token = output_token[1:]
         if output_token[0] == 1:  # some users find that there is a start token <s> at the beginning. remove it
@@ -253,10 +262,10 @@ class Chat:
                 if torch.where(output_token == token)[0].numel() != 0:
                         toke_idx = torch.where(output_token == token)[0][0]
                         p_all[word].append(probs[toke_idx,token].cpu().item())
-                        if -np.log(probs[toke_idx,token].cpu())>0.9:
+                        if -np.log(probs[toke_idx,token].item())>0.9:
                             if word not in u_wordlist and pos.startswith('NN'):
                                 u_wordlist.append(word)
-                                p_list.append(probs[toke_idx,token])
+                                p_list.append(probs[toke_idx,token].item())
                                 break
 
         conv.messages[-1][1] = output_text
@@ -412,6 +421,10 @@ class Chat:
     def get_context_emb(self, conv, img_list):
         prompt = conv.get_prompt()
         prompt_segs = prompt.split('<ImageHere>')
+        # ================ CHANGE BLOCK ================
+        if len(prompt_segs) > 2: 
+          prompt_segs = [prompt_segs[0], prompt_segs[-1]]
+        # ================ END CHANGE BLOCK ================
         assert len(prompt_segs) == len(img_list) + 1, "Unmatched numbers of image placeholders and images."
         seg_tokens = [
             self.model.llama_tokenizer(

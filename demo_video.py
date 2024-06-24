@@ -25,6 +25,8 @@ from video_llama.processors import *
 from video_llama.runners import *
 from video_llama.tasks import *
 
+from generate_idk import *
+
 #%%
 def parse_args():
     parser = argparse.ArgumentParser(description="Demo")
@@ -123,19 +125,19 @@ def gradio_answer(chatbot, chat_state, img_list, num_beams, temperature):
                                                                         temperature=temperature,
                                                                         max_new_tokens=300,
                                                                         max_length=2000)
-    float_list = [tensor.item() for tensor in plist]
+    # float_list = [tensor.item() for tensor in p_list]
 
     print(f'Original (possible hallucination) output: {output_text}')
 
     output_text = replace_words_with_idk(output_text, wordlist, p_all, un=0.9)
 
-    print(f'Replacing possible hallucination words with [IDN]: {output_text}')
+    print(f'Replacing possible hallucination words with [IDK]: {output_text}')
 
     rewrite_prompt = 'According to the picture, remove the information that does not exist in the following description: ' + output_text
 
-    conv.append_message(conv.roles[0], "<Image><ImageHere></Image> "+ rewrite_prompt)
+    chat_state.append_message(chat_state.roles[0], "<Video><ImageHere></Video> "+ rewrite_prompt)
     
-    output_text, _, _, _, _, _, _ = chat.answer_lure(conv=conv,
+    output_text, _, _, _, _, _, _ = chat.answer_lure(conv=chat_state,
                                                 img_list=img_list,
                                                 num_beams=num_beams,
                                                 temperature=temperature,
